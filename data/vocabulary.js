@@ -1,123 +1,84 @@
 /*
- * VĀRDU KRĀJUMS / VOCABULARY DATA
+ * VĀRDU KRĀJUMS / VOCABULARY DATA  (avots: "Stage 3 student.pdf")
  * ---------------------------------------------------------------
- * Šeit glabājas visi vārdiņi. Katra "tēma" (unit) satur vārdu sarakstu.
- *
- * Katram vārdam ir šādi lauki:
+ * Katram vārdam:
  *   word        – angļu vārds vai frāze (obligāts)
- *   pos         – vārda šķira: noun, verb, adjective, adverb, phrase ... (ieteicams)
- *   meaning     – definīcija angļu valodā (obligāts)
- *   example     – piemēra teikums, kurā vārds ir lietots (ieteicams;
- *                 no tā automātiski veido "ieraksti trūkstošo vārdu" jautājumus)
+ *   pos         – vārda šķira: noun, verb, adjective ... (nav obligāts)
+ *   explanation – vārda skaidrojums angliski (obligāts)
+ *   example     – piemēra teikums (nav obligāts)
  *   translation – tulkojums latviski (nav obligāts)
- *   usage       – papildu skaidrojums par lietojumu angliski (nav obligāts;
- *                 tiek parādīts, ja atbilde ir nepareiza)
+ *   qa          – jautājumi un atbildes no mācību materiāla:
+ *                 [{ q: "jautājums", a: "atbilde" }, ...]
  *
- * Papildus var pievienot gatavus jautājumus tēmas laukā "questions":
- *   { question: "...", options: ["a","b","c","d"], answer: "b", explanation: "..." }
- *
- * PAŠREIZĒJAIS SATURS IR TIKAI PARAUGS – to aizstās vārdi no mācību materiāliem.
+ * PAŠREIZĒJAIS SATURS IR PARAUGS – tiks aizstāts ar vārdiem no "Stage 3 student.pdf".
  */
 window.VOCABULARY = {
-  units: [
+  source: "Paraugs (sample) – gaida Stage 3 student.pdf",
+  words: [
     {
-      id: "sample",
-      title: "Paraugs · Sample unit",
-      description: "Demonstrācijas vārdi – tiks aizstāti ar jūsu materiāliem",
-      words: [
-        {
-          word: "reliable",
-          pos: "adjective",
-          meaning: "able to be trusted to do something well or to behave as expected",
-          example: "My old car is still very reliable.",
-          translation: "uzticams",
-          usage: "Collocations: a reliable friend / source / method. Opposite: unreliable. The noun is 'reliability'."
-        },
-        {
-          word: "achieve",
-          pos: "verb",
-          meaning: "to succeed in doing or getting something after a lot of effort",
-          example: "She worked hard to achieve her goals.",
-          translation: "sasniegt",
-          usage: "We achieve goals, success, results or an aim. The noun is 'achievement'. Don't confuse with 'receive' (to get something that is given to you)."
-        },
-        {
-          word: "borrow",
-          pos: "verb",
-          meaning: "to take and use something that belongs to someone else, and return it later",
-          example: "Can I borrow your pen for a minute?",
-          translation: "aizņemties",
-          usage: "You BORROW something FROM someone; someone LENDS something TO you. 'Can I borrow your pen?' = 'Can you lend me your pen?'"
-        },
-        {
-          word: "lend",
-          pos: "verb",
-          meaning: "to give something to someone for a short time, expecting it to be given back",
-          example: "Could you lend me ten euros until Friday?",
-          translation: "aizdot",
-          usage: "Past forms: lend – lent – lent. Pattern: lend somebody something / lend something to somebody."
-        },
-        {
-          word: "convenient",
-          pos: "adjective",
-          meaning: "suitable for your plans and needs; easy to use or reach",
-          example: "The shop is in a convenient location near the station.",
-          translation: "ērts, piemērots",
-          usage: "Used about times, places and methods: 'Is 5 o'clock convenient for you?' Not used for comfortable clothes or chairs – there we say 'comfortable'."
-        },
-        {
-          word: "comfortable",
-          pos: "adjective",
-          meaning: "making you feel physically relaxed, without pain or discomfort",
-          example: "This sofa is really comfortable.",
-          translation: "ērts (fiziski)",
-          usage: "Used about furniture, clothes, shoes, rooms and feelings: 'I feel comfortable here.' For a suitable time or place, use 'convenient'."
-        },
-        {
-          word: "rarely",
-          pos: "adverb",
-          meaning: "not often; almost never",
-          example: "We rarely go to the cinema these days.",
-          translation: "reti",
-          usage: "Adverbs of frequency usually go before the main verb but after 'be': 'He is rarely late.' Similar: seldom, hardly ever."
-        },
-        {
-          word: "decrease",
-          pos: "verb",
-          meaning: "to become smaller in size, number or amount",
-          example: "Prices usually decrease after the holidays.",
-          translation: "samazināties",
-          usage: "Opposite: increase. As a noun the stress moves: a DEcrease (noun) vs. to deCREASE (verb)."
-        },
-        {
-          word: "look forward to",
-          pos: "phrasal verb",
-          meaning: "to feel happy and excited about something that is going to happen",
-          example: "I look forward to hearing from you.",
-          translation: "ar nepacietību gaidīt",
-          usage: "'To' here is a preposition, so it is followed by a noun or an -ing form: 'I look forward to seeing you' (NOT 'to see you')."
-        },
-        {
-          word: "argue",
-          pos: "verb",
-          meaning: "to speak angrily to someone because you disagree with them",
-          example: "The children always argue about who sits in the front seat.",
-          translation: "strīdēties",
-          usage: "Patterns: argue WITH somebody ABOUT something. The noun is 'argument'."
-        }
-      ],
-      questions: [
-        {
-          question: "Choose the correct sentence.",
-          options: [
-            "Can you borrow me your bike?",
-            "Can you lend me your bike?",
-            "Can I lend your bike?",
-            "Can you borrow your bike to me?"
-          ],
-          answer: "Can you lend me your bike?",
-          explanation: "The owner LENDS something TO another person; the other person BORROWS it FROM the owner. So: 'Can you lend me your bike?' or 'Can I borrow your bike?'"
-        }
+      word: "push",
+      pos: "verb",
+      explanation: "to press against something with your hand or body so that it moves away from you",
+      example: "Push the door to open it.",
+      translation: "stumt, spiest",
+      qa: [
+        { q: "What do you do to a door that says “PUSH”?", a: "I push it to open it." },
+        { q: "What's the opposite of push?", a: "The opposite of push is pull." }
+      ]
+    },
+    {
+      word: "pull",
+      pos: "verb",
+      explanation: "to hold something and move it towards you",
+      example: "Pull the chair closer to the table.",
+      translation: "vilkt",
+      qa: [
+        { q: "What do you do when you open a drawer?", a: "I pull it towards me." },
+        { q: "Do you push or pull a dog's lead when you walk it?", a: "The dog pulls the lead, and I pull it back." }
+      ]
+    },
+    {
+      word: "borrow",
+      pos: "verb",
+      explanation: "to take and use something that belongs to someone else, and give it back later",
+      example: "Can I borrow your pen?",
+      translation: "aizņemties",
+      qa: [
+        { q: "What do you say when you want to use someone's pen for a moment?", a: "Can I borrow your pen, please?" },
+        { q: "Where can you borrow books?", a: "You can borrow books from a library." }
+      ]
+    },
+    {
+      word: "lend",
+      pos: "verb",
+      explanation: "to give something to someone for a short time, expecting to get it back",
+      example: "Could you lend me ten euros?",
+      translation: "aizdot",
+      qa: [
+        { q: "What's the difference between lend and borrow?", a: "I lend something to you, and you borrow something from me." },
+        { q: "What's the past tense of lend?", a: "The past tense of lend is lent." }
+      ]
+    },
+    {
+      word: "early",
+      pos: "adjective / adverb",
+      explanation: "before the usual or expected time",
+      example: "I get up early on weekdays.",
+      translation: "agri",
+      qa: [
+        { q: "What's the opposite of early?", a: "The opposite of early is late." },
+        { q: "Do you get up early in the morning?", a: "Yes, I get up early, at six o'clock." }
+      ]
+    },
+    {
+      word: "between",
+      pos: "preposition",
+      explanation: "in the space that separates two things or people",
+      example: "The letter B is between A and C.",
+      translation: "starp",
+      qa: [
+        { q: "What letter is between A and C?", a: "The letter B is between A and C." },
+        { q: "What day is between Monday and Wednesday?", a: "Tuesday is between Monday and Wednesday." }
       ]
     }
   ]

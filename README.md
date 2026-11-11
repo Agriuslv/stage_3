@@ -12,28 +12,32 @@ Angļu valodas mācību lietotne, kas balstīta uz mācību materiāliem. Tā da
 
 ### Vārdiņi
 
-- Jautājums ar 4 atbilžu variantiem, no kuriem viens ir pareizs.
-- Jautājumu veidi: *nozīme → vārds*, *vārds → nozīme*, *teikums ar trūkstošo vārdu*, kā arī paša sagatavoti jautājumi.
-- Ja atbilde ir nepareiza, tiek parādīts **skaidrojums angļu valodā**: pareizā atbilde, vārda nozīme, piemērs, lietojums un tas, ko nozīmē izvēlētais (nepareizais) vārds.
-- Progress tiek saglabāts ierīcē. Vārdi, kuros pieļautas kļūdas, tiek rādīti biežāk, un tos var atkārtot ar pogu **“Atkārtot kļūdas”**.
-- Vārda izrunu var noklausīties (🔊).
+1. Vārdu sarakstā izvēlies vārdu, piemēram, **push**. Tiek parādīts vārda skaidrojums angļu valodā, piemērs un izruna (🔊).
+2. Nospied **“I know this word”**. Tiek uzdoti šī vārda jautājumi no mācību materiāla, un no 4 variantiem jāizvēlas pareizais.
+3. Ir divi režīmi:
+   - **Jautājums → atbilde**: dots jautājums, jāizvēlas pareizā atbilde;
+   - **Atbilde → jautājums**: dota atbilde, jāizvēlas pareizais jautājums.
+4. Ja atbilde ir nepareiza, tiek parādīts **skaidrojums angļu valodā** (pareizā atbilde, vārda nozīme un kāpēc izvēlētais variants neder). Tas pats jautājums tiek uzdots **vēlreiz** pēc dažiem citiem jautājumiem.
+5. Progress (%) tiek rādīts katram vārdam un kopā. Kļūdas paliek sadaļā **“Atkārtot kļūdas”**, līdz uz tām atbildēsi pareizi.
 
 ## Vārdu pievienošana
 
-Visi vārdi ir failā [`data/vocabulary.js`](data/vocabulary.js). Katrai tēmai (unit) ir savs vārdu saraksts:
+Visi vārdi ir failā [`data/vocabulary.js`](data/vocabulary.js):
 
 ```js
 {
-  word: "borrow",
+  word: "push",
   pos: "verb",
-  meaning: "to take and use something that belongs to someone else, and return it later",
-  example: "Can I borrow your pen for a minute?",
-  translation: "aizņemties",
-  usage: "You BORROW something FROM someone; someone LENDS something TO you."
+  explanation: "to press against something with your hand or body so that it moves away from you",
+  example: "Push the door to open it.",
+  translation: "stumt, spiest",
+  qa: [
+    { q: "What do you do to a door that says PUSH?", a: "I push it to open it." }
+  ]
 }
 ```
 
-Pašlaik failā ir tikai **paraugs**, ko aizstās vārdi no mācību materiāliem.
+Pašlaik failā ir **paraugs**, ko aizstās vārdi no “Stage 3 student.pdf”.
 
 ## Lietošana iPhone tālrunī
 

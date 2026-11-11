@@ -174,3 +174,38 @@ main { max-width: 640px; margin: 0 auto; padding: 20px 16px 40px; }
   display: inline-grid; place-items: center; cursor: pointer; vertical-align: middle; margin-left: 8px;
 }
 .speak svg { width: 20px; height: 20px; }
+
+/* --- v2: word list, word card, stats --- */
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; text-align: center; padding: 14px; }
+.stat b { display: block; font-size: 22px; letter-spacing: -.01em; }
+.stat span { font-size: 13px; color: var(--muted); }
+.stat.bad b { color: var(--bad); }
+.bar.wide { grid-column: 1 / -1; margin-top: 4px; }
+.btn.danger { background: var(--bad); color: #fff; }
+.btn.danger:disabled { background: var(--surface-2); color: var(--muted); opacity: 1; }
+.search {
+  width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font: inherit; font-size: 16px; margin-bottom: 10px;
+}
+.word-list { display: grid; gap: 8px; }
+.word-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer;
+  padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface);
+}
+.word-row .chev { color: var(--muted); display: grid; }
+.wr-main { flex: 1; min-width: 0; }
+.wr-main strong { display: block; font-size: 17px; }
+.wr-pct { font-size: 14px; color: var(--muted); white-space: nowrap; }
+.wr-pct .err { color: var(--bad); font-weight: 600; }
+.dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
+.dot.mid { background: var(--accent); }
+.dot.ok { background: var(--ok); }
+.dot.bad { background: var(--bad); }
+.word-card .explanation { font-size: 19px; margin: 14px 0 8px; }
+.word-card .ex { font-style: italic; color: var(--muted); margin: 0 0 6px; }
+.word-card .lv { margin: 0; }
+.hint { text-align: center; color: var(--muted); font-size: 14px; margin: 14px 0 0; }
+.pager { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pager .btn { margin-top: 10px; font-size: 15px; }
+.retry-tag { color: var(--bad); font-size: 14px; font-weight: 600; margin: 0 0 8px; }
+.tag-word { text-transform: none; letter-spacing: 0; color: var(--accent); }
