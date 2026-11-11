@@ -1,0 +1,16 @@
+{
+  "name": "Stage 3 English",
+  "short_name": "Stage 3",
+  "description": "Angļu valodas mācību platforma: vārdiņi, diktāti, uzdevumi",
+  "lang": "lv",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f4ef",
+  "theme_color": "#2f5bd3",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
