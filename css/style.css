@@ -209,3 +209,11 @@ main { max-width: 640px; margin: 0 auto; padding: 20px 16px 40px; }
 .pager .btn { margin-top: 10px; font-size: 15px; }
 .retry-tag { color: var(--bad); font-size: 14px; font-weight: 600; margin: 0 0 8px; }
 .tag-word { text-transform: none; letter-spacing: 0; color: var(--accent); }
+.headword + .headword { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 14px; }
+.headword .prompt-word { margin: 0; }
+.headword .explanation { font-size: 18px; margin: 8px 0 4px; }
+.forms { margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: 15px; display: grid; gap: 2px; }
+.sample { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--border); font-size: 15px; }
+.sample p { margin: 4px 0; }
+.sample .label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+p.tag-word { margin: -4px 0 8px; font-size: 14px; font-weight: 600; }

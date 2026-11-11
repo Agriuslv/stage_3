@@ -2,9 +2,11 @@
 (function () {
   "use strict";
 
-  const DATA = window.VOCABULARY || { words: [] };
-  const WORDS = (DATA.words || []).filter((w) => w && w.word);
-  const STORE_KEY = "stage3.vocab.v2";
+  const DATA = window.VOCABULARY || { groups: [] };
+  // A "group" is one entry of the material: one or more headwords + their questions and answers.
+  const WORDS = (DATA.groups || []).filter((g) => g && g.words && g.words.length && g.qa && g.qa.length);
+  WORDS.forEach((g) => { g.word = g.words.map((w) => w.word).join(" · "); });
+  const STORE_KEY = "stage3.vocab.v3";
   const SETTINGS_KEY = "stage3.settings.v2";
   const app = document.getElementById("app");
   const titleEl = document.getElementById("title");
@@ -28,6 +30,7 @@
   const LETTERS = ["A", "B", "C", "D", "E", "F"];
   const DIRS = { qa: "Jautājums → atbilde", aq: "Atbilde → jautājums" };
   const itemKey = (wi, qi, dir) => `${WORDS[wi].word}|${qi}|${dir}`;
+  const mainAnswer = (pair) => pair.a[0];
 
   const ICONS = {
     words: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h13v15H6.5A2.5 2.5 0 0 0 4 20.5 2.5 2.5 0 0 0 6.5 23H19v-5"/><path d="M8 7h7M8 11h5"/></svg>',
@@ -85,7 +88,7 @@
   /* ---------- questions ---------- */
   function allPairs() {
     const out = [];
-    WORDS.forEach((w, wi) => (w.qa || []).forEach((p, qi) => out.push({ wi, qi, q: p.q, a: p.a })));
+    WORDS.forEach((w, wi) => (w.qa || []).forEach((p, qi) => out.push({ wi, qi, q: p.q, a: mainAnswer(p) })));
     return out;
   }
 
@@ -93,16 +96,17 @@
   function makeQuestion(wi, qi, dir) {
     const pair = WORDS[wi].qa[qi];
     const field = dir === "qa" ? "a" : "q";
-    const correctText = pair[field];
-    const pool = allPairs().filter((p) => !(p.wi === wi && p.qi === qi) && p[field] !== correctText);
-    // Prefer options from other words, so that the only valid option is the real one.
+    const correctText = dir === "qa" ? mainAnswer(pair) : pair.q;
+    const accepted = new Set(dir === "qa" ? pair.a : [pair.q]);
+    const pool = allPairs().filter((p) => !(p.wi === wi && p.qi === qi) && !accepted.has(p[field]));
+    // Mix: up to 2 similar options from the same word (harder – tests grammar and meaning), the rest from other words.
+    const same = shuffle(pool.filter((p) => p.wi === wi)).slice(0, 2);
     const other = shuffle(pool.filter((p) => p.wi !== wi));
-    const same = shuffle(pool.filter((p) => p.wi === wi));
     const seen = new Set([correctText]);
     const distractors = [];
-    other.concat(same).forEach((p) => { if (distractors.length < 3 && !seen.has(p[field])) { seen.add(p[field]); distractors.push(p); } });
+    same.concat(other).forEach((p) => { if (distractors.length < 3 && !seen.has(p[field])) { seen.add(p[field]); distractors.push(p); } });
     const options = shuffle([{ wi, qi, text: correctText }].concat(distractors.map((p) => ({ wi: p.wi, qi: p.qi, text: p[field] }))));
-    return { wi, qi, dir, key: itemKey(wi, qi, dir), prompt: dir === "qa" ? pair.q : pair.a, answer: correctText, options };
+    return { wi, qi, dir, key: itemKey(wi, qi, dir), prompt: dir === "qa" ? pair.q : mainAnswer(pair), answer: correctText, options };
   }
 
   /* ---------- views ---------- */
@@ -152,13 +156,13 @@
       <button class="btn danger" id="review" ${mistakes ? "" : "disabled"}>Atkārtot kļūdas (${mistakes})</button>
       <button class="btn secondary" id="mixed">Jaukti jautājumi no visiem vārdiem</button>
       <p class="section-label">Vārdi</p>
-      <input class="search" id="search" type="search" placeholder="Meklēt vārdu…" value="${esc(searchText)}" autocomplete="off" autocapitalize="off">
+      <input class="search" id="search" type="search" placeholder="Meklēt vārdu (angliski vai latviski)…" value="${esc(searchText)}" autocomplete="off" autocapitalize="off">
       <div class="word-list" id="list"></div>
       <button class="btn secondary" id="reset" style="background:none;color:var(--muted);font-weight:500">Dzēst progresu</button>`;
 
     const renderList = () => {
       const q = searchText.trim().toLowerCase();
-      const rows = WORDS.map((w, wi) => ({ w, wi })).filter(({ w }) => !q || w.word.toLowerCase().includes(q));
+      const rows = WORDS.map((w, wi) => ({ w, wi })).filter(({ w }) => !q || w.word.toLowerCase().includes(q) || w.words.some((x) => (x.translation || "").toLowerCase().includes(q)));
       document.getElementById("list").innerHTML = rows.length ? rows.map(({ w, wi }) => {
         const p = wordProgress(wi, dir);
         const status = p.wrong ? "bad" : p.pct === 100 ? "ok" : p.started ? "mid" : "";
@@ -184,7 +188,8 @@
       // Priority: wrong answers first, then never answered, then the rest.
       const items = allPairs().map((p) => {
         const s = stats[itemKey(p.wi, p.qi, dir)];
-        const prio = !s ? 1 : s.last === false ? 2 : 0;
+        const started = wordProgress(p.wi, dir).started;
+        const prio = s && s.last === false ? 3 : !s && started ? 2 : !s ? 1 : 0;
         return { p, prio: prio + Math.random() };
       }).sort((a, b) => b.prio - a.prio).slice(0, 10);
       startSession(shuffle(items).map(({ p }) => makeQuestion(p.wi, p.qi, dir)), { title: "Jaukti jautājumi", back: "#/vocab" });
@@ -195,30 +200,41 @@
   }
 
   function viewWord(wi) {
-    const w = WORDS[wi];
-    if (!w) { location.replace("#/vocab"); return; }
+    const g = WORDS[wi];
+    if (!g) { location.replace("#/vocab"); return; }
     setHeader("Vārdiņi", true);
     const dir = settings.dir;
     const p = wordProgress(wi, dir);
-    const n = (w.qa || []).length;
+    const n = g.qa.length;
+    const words = g.words.map((w) => `
+        <div class="headword">
+          <p class="prompt prompt-word">${esc(w.word)}${speakBtn(w.word)}</p>
+          ${w.pos ? `<span class="pos">${esc(w.pos)}</span>` : ""}
+          <p class="explanation">${esc(w.explanation || "")}</p>
+          ${w.translation ? `<p class="lv">LV: ${esc(w.translation)}</p>` : ""}
+        </div>`).join("");
+    const tables = (g.tables || []).length ? `<div class="forms">${g.tables.map((t) => `<div>${esc(t)}</div>`).join("")}</div>` : "";
+    const example = g.qa[0];
     app.innerHTML = `
       <div class="card word-card">
-        <p class="qtype">Word ${wi + 1} of ${WORDS.length}</p>
-        <p class="prompt prompt-word">${esc(w.word)}${speakBtn(w.word)}</p>
-        ${w.pos ? `<span class="pos">${esc(w.pos)}</span>` : ""}
-        <p class="explanation">${esc(w.explanation || "")}</p>
-        ${w.example ? `<p class="ex">“${esc(w.example)}”</p>` : ""}
-        ${w.translation ? `<p class="lv">LV: ${esc(w.translation)}</p>` : ""}
+        <p class="qtype">${wi + 1} / ${WORDS.length}${g.page ? ` · lpp. ${esc(g.page)}` : ""}</p>
+        ${words}
+        ${tables}
+        <div class="sample">
+          <p class="label">Example from the book</p>
+          <p><b>Q:</b> ${esc(example.q)}</p>
+          <p><b>A:</b> ${esc(example.a[0])}</p>
+        </div>
       </div>
       <p class="hint">${n} ${n === 1 ? "jautājums" : "jautājumi"} · ${DIRS[dir]} · apgūts ${p.pct}%</p>
-      <button class="btn" id="know" ${n ? "" : "disabled"}>I know this word</button>
+      <button class="btn" id="know">${g.words.length > 1 ? "I know these words" : "I know this word"}</button>
       <div class="pager">
         <button class="btn secondary" data-go="#/word/${(wi - 1 + WORDS.length) % WORDS.length}">← Iepriekšējais</button>
         <button class="btn secondary" data-go="#/word/${(wi + 1) % WORDS.length}">Nākamais →</button>
       </div>`;
     document.getElementById("know").addEventListener("click", () => {
-      const qs = shuffle((w.qa || []).map((_, qi) => makeQuestion(wi, qi, dir)));
-      startSession(qs, { title: w.word, back: `#/word/${wi}`, wi });
+      const qs = shuffle(g.qa.map((_, qi) => makeQuestion(wi, qi, dir)));
+      startSession(qs, { title: g.word, back: `#/word/${wi}`, wi });
     });
   }
 
@@ -242,7 +258,7 @@
       <div class="progress"><span>Atlikuši: ${left}</span><span class="bar"><i style="width:${pct}%"></i></span><span>✓ ${session.firstTry}/${session.uniq}</span></div>
       ${q.retry ? `<p class="retry-tag">Atkārtojums – iepriekš atbildēji nepareizi</p>` : ""}
       <div class="card">
-        <p class="qtype">${label} · <span class="tag-word">${esc(WORDS[q.wi].word)}</span></p>
+        <p class="qtype">${label}</p><p class="tag-word">${esc(WORDS[q.wi].word)}</p>
         <p class="prompt">${esc(q.prompt)}</p>
       </div>
       <div class="options">${q.options.map((o, i) => `<button class="opt" data-i="${i}"><span class="key">${LETTERS[i]}</span><span>${esc(o.text)}</span></button>`).join("")}</div>
@@ -250,24 +266,37 @@
     app.querySelectorAll(".opt").forEach((b) => b.addEventListener("click", () => answer(Number(b.dataset.i))));
   }
 
-  function explain(q, chosen, correct) {
-    const w = WORDS[q.wi];
-    if (correct) {
-      return `<h3>Correct!</h3><p><strong>${esc(w.word)}</strong>${w.pos ? ` <span class="pos">(${esc(w.pos)})</span>` : ""} – ${esc(w.explanation || "")}.</p>`;
-    }
-    const pair = w.qa[q.qi];
-    let h = `<h3>Not quite.</h3>`;
-    if (q.dir === "qa") h += `<p><span class="label">Question:</span> ${esc(pair.q)}</p><p><span class="label">Correct answer:</span> <strong>${esc(pair.a)}</strong></p>`;
-    else h += `<p><span class="label">Answer:</span> ${esc(pair.a)}</p><p><span class="label">Correct question:</span> <strong>${esc(pair.q)}</strong></p>`;
-    h += `<p><span class="label">Key word:</span> <strong>${esc(w.word)}</strong>${w.pos ? ` <span class="pos">(${esc(w.pos)})</span>` : ""} – ${esc(w.explanation || "")}.</p>`;
-    if (w.example) h += `<p class="ex">“${esc(w.example)}”</p>`;
+  function keyWords(g) {
+    return g.words.map((w) => `<p><strong>${esc(w.word)}</strong>${w.pos ? ` <span class="pos">(${esc(w.pos)})</span>` : ""} – ${esc(w.explanation || "")}.</p>`).join("");
+  }
 
-    const cw = WORDS[chosen.wi];
-    const cp = cw && cw.qa[chosen.qi];
+  function explain(q, chosen, correct) {
+    const g = WORDS[q.wi];
+    const pair = g.qa[q.qi];
+    const others = pair.a.slice(1);
+    if (correct) {
+      let h = `<h3>Correct!</h3>`;
+      if (q.dir === "qa" && others.length) h += `<p><span class="label">Also correct:</span> ${others.map(esc).join(" / ")}</p>`;
+      return h;
+    }
+    let h = `<h3>Not quite.</h3>`;
+    if (q.dir === "qa") {
+      h += `<p><span class="label">Question:</span> ${esc(pair.q)}</p><p><span class="label">Correct answer:</span> <strong>${esc(pair.a[0])}</strong></p>`;
+      if (others.length) h += `<p><span class="label">Also correct:</span> ${others.map(esc).join(" / ")}</p>`;
+    } else {
+      h += `<p><span class="label">Answer:</span> ${esc(pair.a[0])}</p><p><span class="label">Correct question:</span> <strong>${esc(pair.q)}</strong></p>`;
+    }
+    h += `<p class="label" style="margin-top:10px">Key words:</p>${keyWords(g)}`;
+
+    const cg = WORDS[chosen.wi];
+    const cp = cg && cg.qa[chosen.qi];
     if (cp) {
-      h += `<hr>`;
-      if (q.dir === "qa") h += `<p><span class="label">Why your choice is wrong:</span> “${esc(chosen.text)}” is the answer to a different question: <em>“${esc(cp.q)}”</em> (word: <strong>${esc(cw.word)}</strong>).</p>`;
-      else h += `<p><span class="label">Why your choice is wrong:</span> the question “${esc(chosen.text)}” has a different answer: <em>“${esc(cp.a)}”</em> (word: <strong>${esc(cw.word)}</strong>).</p>`;
+      h += `<hr><p><span class="label">Why your choice is wrong:</span> `;
+      if (q.dir === "qa") h += `“${esc(chosen.text)}” is the answer to a different question: <em>“${esc(cp.q)}”</em>`;
+      else h += `the question “${esc(chosen.text)}” has a different answer: <em>“${esc(cp.a[0])}”</em>`;
+      if (chosen.wi === q.wi) h += ` Look carefully at the verb form, the tense and the pronouns – the answer must repeat the question.`;
+      else h += ` (word: <strong>${esc(cg.word)}</strong>).`;
+      h += `</p>`;
     }
     h += `<p class="lv">Šis jautājums tiks uzdots vēlreiz.</p>`;
     return h;
@@ -318,7 +347,7 @@
     const msg = pct === 100 ? "Excellent! Viss pareizi ar pirmo reizi." : pct >= 80 ? "Great job!" : pct >= 50 ? "Good effort – keep practising." : "Keep going – practice makes perfect.";
     const list = session.wrong.map((q) => {
       const w = WORDS[q.wi], p = w.qa[q.qi];
-      return `<div class="mistake"><strong>${esc(w.word)}</strong><span style="display:block">Q: ${esc(p.q)}</span><span style="display:block">A: ${esc(p.a)}</span></div>`;
+      return `<div class="mistake"><strong>${esc(w.word)}</strong><span style="display:block">Q: ${esc(p.q)}</span><span style="display:block">A: ${esc(p.a[0])}</span></div>`;
     }).join("");
     const hasNext = session.wi != null;
     app.innerHTML = `

@@ -20,24 +20,22 @@ Angļu valodas mācību lietotne, kas balstīta uz mācību materiāliem. Tā da
 4. Ja atbilde ir nepareiza, tiek parādīts **skaidrojums angļu valodā** (pareizā atbilde, vārda nozīme un kāpēc izvēlētais variants neder). Tas pats jautājums tiek uzdots **vēlreiz** pēc dažiem citiem jautājumiem.
 5. Progress (%) tiek rādīts katram vārdam un kopā. Kļūdas paliek sadaļā **“Atkārtot kļūdas”**, līdz uz tām atbildēsi pareizi.
 
-## Vārdu pievienošana
+## Saturs un tā atjaunošana
 
-Visi vārdi ir failā [`data/vocabulary.js`](data/vocabulary.js):
+Vārdi, jautājumi un atbildes ir automātiski nolasīti no **“Stage 3 student.pdf”**: 141 kartīte, 257 vārdi un 995 jautājumi ar atbildēm (lpp. 119–207).
 
-```js
-{
-  word: "push",
-  pos: "verb",
-  explanation: "to press against something with your hand or body so that it moves away from you",
-  example: "Push the door to open it.",
-  translation: "stumt, spiest",
-  qa: [
-    { q: "What do you do to a door that says PUSH?", a: "I push it to open it." }
-  ]
-}
+- `tools/parse_pdf.py` nolasa PDF (vārdus, jautājumus un atbildes, kā arī alternatīvās atbildes “or:”).
+- `tools/glossary.py` satur katra vārda skaidrojumu angļu valodā un tulkojumu latviski. To var labot.
+- `tools/build_vocab.py` apvieno abus un izveido `data/vocabulary.js`.
+
+Pēc izmaiņām palaid:
+
+```bash
+pip install pdfplumber
+python3 tools/build_vocab.py "Stage 3 student.pdf"
 ```
 
-Pašlaik failā ir **paraugs**, ko aizstās vārdi no “Stage 3 student.pdf”.
+Diktāti (lpp. 208–) un uzdevumi no tā paša PDF tiks izmantoti nākamajos etapos.
 
 ## Lietošana iPhone tālrunī
 
