@@ -24,6 +24,34 @@
   let stats = load(STORE_KEY, {});
   let settings = Object.assign({ dir: "qa" }, load(SETTINGS_KEY, {}));
 
+  /* ---------- daily activity (time, answers, learned words) ---------- */
+  const ACT_KEY = "stage3.activity.v1";
+  let activity = Object.assign({ days: {}, learned: {} }, load(ACT_KEY, {}));
+  const pad = (n) => String(n).padStart(2, "0");
+  const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const today = () => dayKey(new Date());
+  function dayRec(k) {
+    k = k || today();
+    if (!activity.days[k]) activity.days[k] = { ms: 0, answers: 0, correct: 0, words: 0 };
+    return activity.days[k];
+  }
+  const saveActivity = () => save(ACT_KEY, activity);
+
+  // Time counts only while the app is open on screen and the user did something in the last 90 s.
+  let lastInput = Date.now(), lastTick = Date.now();
+  ["pointerdown", "keydown", "touchstart", "scroll"].forEach((ev) => window.addEventListener(ev, () => { lastInput = Date.now(); }, { passive: true }));
+  function tick() {
+    const now = Date.now();
+    const dt = now - lastTick;
+    lastTick = now;
+    if (document.visibilityState === "visible" && now - lastInput < 90000 && dt > 0 && dt < 30000) {
+      dayRec().ms += dt;
+      saveActivity();
+    }
+  }
+  setInterval(tick, 5000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { lastTick = Date.now(); lastInput = Date.now(); } else tick(); });
+
   /* ---------- helpers ---------- */
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const shuffle = (arr) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -36,6 +64,7 @@
     words: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h13v15H6.5A2.5 2.5 0 0 0 4 20.5 2.5 2.5 0 0 0 6.5 23H19v-5"/><path d="M8 7h7M8 11h5"/></svg>',
     dictation: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>',
     tasks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+    stats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
     chev: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>',
     speak: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>'
   };
@@ -124,6 +153,11 @@
           <span><strong>Vārdiņi</strong><span class="sub">Vocabulary · ${WORDS.length} vārdi · apgūti ${overall()}%</span></span>
           <span class="chev">${ICONS.chev}</span>
         </button>
+        <button class="tile" data-go="#/stats">
+          <span class="ico">${ICONS.stats}</span>
+          <span><strong>Statistika</strong><span class="sub">Šodien: ${fmtTime(dayRec().ms)} · apgūti ${dayRec().words} vārdi</span></span>
+          <span class="chev">${ICONS.chev}</span>
+        </button>
         <button class="tile" disabled>
           <span class="ico">${ICONS.dictation}</span>
           <span><strong>Diktāti</strong><span class="sub">Dictations</span></span>
@@ -195,7 +229,7 @@
       startSession(shuffle(items).map(({ p }) => makeQuestion(p.wi, p.qi, dir)), { title: "Jaukti jautājumi", back: "#/vocab" });
     });
     document.getElementById("reset").addEventListener("click", () => {
-      if (confirm("Vai tiešām dzēst visu vārdu apguves progresu?")) { stats = {}; save(STORE_KEY, stats); viewVocab(); }
+      if (confirm("Vai tiešām dzēst visu vārdu apguves progresu?")) { stats = {}; save(STORE_KEY, stats); activity.learned = {}; saveActivity(); viewVocab(); }
     });
   }
 
@@ -236,6 +270,129 @@
       const qs = shuffle(g.qa.map((_, qi) => makeQuestion(wi, qi, dir)));
       startSession(qs, { title: g.word, back: `#/word/${wi}`, wi });
     });
+  }
+
+  /* ---------- statistics ---------- */
+  function fmtTime(ms) {
+    const m = Math.round(ms / 60000);
+    if (m < 60) return `${m} min`;
+    return `${Math.floor(m / 60)} h ${pad(m % 60)} min`;
+  }
+  function lastDays(n) {
+    const out = [];
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    for (let i = n - 1; i >= 0; i--) {
+      const x = new Date(d);
+      x.setDate(d.getDate() - i);
+      const k = dayKey(x);
+      out.push({ k, d: x, r: activity.days[k] || { ms: 0, answers: 0, correct: 0, words: 0 } });
+    }
+    return out;
+  }
+  const active = (r) => r && (r.ms >= 60000 || r.answers > 0);
+  function streak() {
+    let n = 0;
+    const d = new Date();
+    if (!active(activity.days[dayKey(d)])) d.setDate(d.getDate() - 1); // today not started yet – count from yesterday
+    while (active(activity.days[dayKey(d)])) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+  const WEEKDAYS = ["Sv", "P", "O", "T", "C", "Pk", "S"];
+
+  // Single-series bar chart (SVG) with tap/hover tooltip.
+  function barChart(id, days, value, fmt, unit) {
+    const W = 340, H = 150, L = 28, B = 22, T = 10;
+    const vals = days.map((x) => value(x.r));
+    const max = Math.max(1, ...vals);
+    const step = max <= 5 ? 1 : Math.ceil(max / 4 / 5) * 5;
+    const top = Math.ceil(max / step) * step;
+    const n = days.length, slot = (W - L) / n, bw = Math.max(4, slot - 4);
+    const y = (v) => T + (H - T - B) * (1 - v / top);
+    let grid = "";
+    for (let v = 0; v <= top; v += step) {
+      grid += `<line x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}" class="grid${v === 0 ? " base" : ""}"/>` +
+              `<text x="${L - 6}" y="${y(v) + 4}" class="tick" text-anchor="end">${v}</text>`;
+    }
+    const bars = days.map((x, i) => {
+      const v = vals[i], bx = L + i * slot + (slot - bw) / 2, by = y(v), h = (H - B) - by;
+      const r = Math.min(4, bw / 2, h);
+      const path = v > 0 ? `M${bx},${H - B} V${by + r} Q${bx},${by} ${bx + r},${by} H${bx + bw - r} Q${bx + bw},${by} ${bx + bw},${by + r} V${H - B} Z` : "";
+      const label = (i % 2 === (n - 1) % 2) ? `<text x="${bx + bw / 2}" y="${H - 6}" class="tick" text-anchor="middle">${x.d.getDate()}.${pad(x.d.getMonth() + 1)}</text>` : "";
+      const tip = `${WEEKDAYS[x.d.getDay()]}, ${x.d.getDate()}.${pad(x.d.getMonth() + 1)}: ${fmt(v)}`;
+      return `<g class="barg${x.k === today() ? " today" : ""}" data-tip="${esc(tip)}" data-x="${bx + bw / 2}" data-y="${by}">
+          <rect x="${L + i * slot}" y="${T}" width="${slot}" height="${H - T - B}" class="hit"/>
+          ${path ? `<path d="${path}" class="bar-mark"/>` : ""}${label}</g>`;
+    }).join("");
+    return `<div class="chart" id="${id}">
+        <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(unit)} pēdējās ${n} dienās">${grid}${bars}</svg>
+        <div class="tip" hidden></div>
+      </div>`;
+  }
+
+  function wireChart(el) {
+    const tip = el.querySelector(".tip"), svg = el.querySelector("svg");
+    const show = (g) => {
+      el.querySelectorAll(".barg.on").forEach((x) => x.classList.remove("on"));
+      g.classList.add("on");
+      tip.textContent = g.dataset.tip;
+      tip.hidden = false;
+      const sx = svg.clientWidth / 340, sy = svg.clientHeight / 150;
+      const left = Math.min(Math.max(Number(g.dataset.x) * sx, 60), svg.clientWidth - 60);
+      tip.style.left = left + "px";
+      tip.style.top = Math.max(0, Number(g.dataset.y) * sy - 34) + "px";
+    };
+    el.querySelectorAll(".barg").forEach((g) => {
+      g.addEventListener("pointerenter", () => show(g));
+      g.addEventListener("click", () => show(g));
+    });
+    el.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") { tip.hidden = true; el.querySelectorAll(".barg.on").forEach((x) => x.classList.remove("on")); } });
+  }
+
+  function viewStats() {
+    tick();
+    setHeader("Statistika", true);
+    const t = dayRec(), days = lastDays(14), week = days.slice(-7);
+    const totalWords = WORDS.reduce((n, g) => n + g.words.length, 0);
+    const learnedWords = WORDS.filter((g) => activity.learned[g.word]).reduce((n, g) => n + g.words.length, 0);
+    const weekMs = week.reduce((n, x) => n + x.r.ms, 0);
+    const weekWords = week.reduce((n, x) => n + x.r.words, 0);
+    const acc = t.answers ? Math.round((t.correct / t.answers) * 100) + "%" : "–";
+    const allDays = Object.keys(activity.days).filter((k) => active(activity.days[k])).sort().reverse();
+
+    app.innerHTML = `
+      <p class="section-label" style="margin-top:0">Šodien</p>
+      <div class="kpis">
+        <div class="kpi"><span>Laiks</span><b>${fmtTime(t.ms)}</b></div>
+        <div class="kpi"><span>Apgūti vārdi</span><b>${t.words}</b></div>
+        <div class="kpi"><span>Atbildes</span><b>${t.answers}</b></div>
+        <div class="kpi"><span>Pareizi</span><b>${acc}</b></div>
+      </div>
+      <div class="kpis two">
+        <div class="kpi"><span>Kopā apgūti</span><b>${learnedWords} <small>/ ${totalWords}</small></b><span class="bar"><i style="width:${Math.round(learnedWords / Math.max(1, totalWords) * 100)}%"></i></span></div>
+        <div class="kpi"><span>Dienas pēc kārtas</span><b>${streak()} 🔥</b></div>
+      </div>
+
+      <p class="section-label">Laiks dienā (minūtes) · pēdējās 14 dienas</p>
+      <div class="card chart-card">
+        <p class="chart-sum">Šonedēļ: <b>${fmtTime(weekMs)}</b> · vidēji ${fmtTime(weekMs / 7)} dienā</p>
+        ${barChart("chTime", days, (r) => Math.round(r.ms / 60000), (v) => `${v} min`, "Minūtes")}
+      </div>
+
+      <p class="section-label">Apgūtie vārdi dienā · pēdējās 14 dienas</p>
+      <div class="card chart-card">
+        <p class="chart-sum">Šonedēļ: <b>${weekWords}</b> vārdi</p>
+        ${barChart("chWords", days, (r) => r.words, (v) => `${v} vārdi`, "Apgūtie vārdi")}
+      </div>
+
+      <p class="section-label">Pa dienām</p>
+      ${allDays.length ? `<div class="card day-table"><table>
+        <thead><tr><th>Diena</th><th>Laiks</th><th>Vārdi</th><th>Atbildes</th></tr></thead>
+        <tbody>${allDays.map((k) => { const r = activity.days[k]; const [yy, mm, dd] = k.split("-");
+          return `<tr><td>${dd}.${mm}.${yy}</td><td>${fmtTime(r.ms)}</td><td>${r.words}</td><td>${r.answers}${r.answers ? ` <span class="muted">(${Math.round(r.correct / r.answers * 100)}%)</span>` : ""}</td></tr>`; }).join("")}</tbody>
+      </table></div>` : `<p class="empty">Vēl nav datu – sāc mācīties sadaļā “Vārdiņi”.</p>`}
+      <p class="hint">Laiks tiek skaitīts, kamēr lietotne ir atvērta un tu tajā darbojies. Vārds skaitās apgūts, kad uz visiem tā jautājumiem (vienā no režīmiem) esi atbildējis pareizi.</p>`;
+    app.querySelectorAll(".chart").forEach(wireChart);
   }
 
   function startSession(questions, opts) {
@@ -314,6 +471,16 @@
     s.last = correct;
     stats[q.key] = s; save(STORE_KEY, stats);
 
+    const rec = dayRec();
+    rec.answers++;
+    if (correct) rec.correct++;
+    const g = WORDS[q.wi];
+    if (!activity.learned[g.word] && (wordProgress(q.wi, "qa").pct === 100 || wordProgress(q.wi, "aq").pct === 100)) {
+      activity.learned[g.word] = today();
+      rec.words += g.words.length;
+    }
+    saveActivity();
+
     if (!q.retry && !session.retried.has(q.key)) { if (correct) session.firstTry++; }
     if (!correct) {
       if (!session.retried.has(q.key)) session.wrong.push(q);
@@ -364,6 +531,7 @@
     if (h.startsWith("#/vocab")) viewVocab();
     else if ((m = h.match(/^#\/word\/(\d+)/))) viewWord(Number(m[1]));
     else if (h.startsWith("#/quiz")) viewQuiz();
+    else if (h.startsWith("#/stats")) viewStats();
     else viewHome();
     window.scrollTo(0, 0);
   }

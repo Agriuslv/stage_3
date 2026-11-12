@@ -7,6 +7,7 @@ Angļu valodas mācību lietotne, kas balstīta uz mācību materiāliem. Tā da
 | Sadaļa | Statuss |
 |---|---|
 | **Vārdiņi** (Vocabulary) | ✅ Gatava |
+| **Statistika** | ✅ Gatava |
 | **Diktāti** (Dictations) | ⏳ Nākamais etaps |
 | **Uzdevumi** (Exercises) | ⏳ Nākamais etaps |
 
@@ -19,6 +20,15 @@ Angļu valodas mācību lietotne, kas balstīta uz mācību materiāliem. Tā da
    - **Atbilde → jautājums**: dota atbilde, jāizvēlas pareizais jautājums.
 4. Ja atbilde ir nepareiza, tiek parādīts **skaidrojums angļu valodā** (pareizā atbilde, vārda nozīme un kāpēc izvēlētais variants neder). Tas pats jautājums tiek uzdots **vēlreiz** pēc dažiem citiem jautājumiem.
 5. Progress (%) tiek rādīts katram vārdam un kopā. Kļūdas paliek sadaļā **“Atkārtot kļūdas”**, līdz uz tām atbildēsi pareizi.
+
+### Statistika
+
+- **Šodien**: mācībām pavadītais laiks, apgūtie vārdi, atbilžu skaits un pareizo atbilžu %.
+- **Kopā apgūti** vārdi no 257 un **dienas pēc kārtas**, kurās esi mācījies.
+- Grafiki par pēdējām 14 dienām: **laiks dienā** (minūtes) un **apgūtie vārdi dienā**. Uzspiežot uz stabiņa, redzama precīza vērtība.
+- Tabula ar visām mācību dienām.
+
+Laiks tiek skaitīts tikai tad, kad lietotne ir atvērta ekrānā un tu tajā darbojies (pēc 90 sekunžu neaktivitātes skaitīšana apstājas). Vārds skaitās apgūts, kad uz visiem tā jautājumiem vienā no režīmiem pēdējā reize atbildēta pareizi. Dati tiek glabāti tikai tavā ierīcē.
 
 ## Saturs un tā atjaunošana
 
