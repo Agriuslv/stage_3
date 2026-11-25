@@ -7,6 +7,7 @@ Angļu valodas mācību lietotne, kas balstīta uz mācību materiāliem. Tā da
 | Sadaļa | Statuss |
 |---|---|
 | **Vārdiņi** (Vocabulary) | ✅ Gatava |
+| **Runāšana** (Speaking) | ✅ Gatava |
 | **Statistika** | ✅ Gatava |
 | **Diktāti** (Dictations) | ⏳ Nākamais etaps |
 | **Uzdevumi** (Exercises) | ⏳ Nākamais etaps |
@@ -20,6 +21,18 @@ Angļu valodas mācību lietotne, kas balstīta uz mācību materiāliem. Tā da
    - **Atbilde → jautājums**: dota atbilde, jāizvēlas pareizais jautājums.
 4. Ja atbilde ir nepareiza, tiek parādīts **skaidrojums angļu valodā** (pareizā atbilde, vārda nozīme un kāpēc izvēlētais variants neder). Tas pats jautājums tiek uzdots **vēlreiz** pēc dažiem citiem jautājumiem.
 5. Progress (%) tiek rādīts katram vārdam un kopā. Kļūdas paliek sadaļā **“Atkārtot kļūdas”**, līdz uz tām atbildēsi pareizi.
+
+### Runāšana
+
+1. Tiek parādīts jautājums no grāmatas (🔊 – to var noklausīties).
+2. Nospied **🎤** un atbildi angliski ar pilnu teikumu, tad nospied vēlreiz (vai vienkārši apklusti).
+3. Atbilde tiek salīdzināta ar grāmatas atbildi (arī ar alternatīvām “or:”). Salīdzinot netiek ņemti vērā lielie burti, pieturzīmes un saīsinājumi (*I’m = I am*, *don’t = do not*), skaitļi (*six = 6*) un viena neliela atpazīšanas kļūda garākos teikumos. Vieta “...” grāmatas atbildē nozīmē tavus vārdus.
+4. Ja atbilde nav pareiza, tiek parādīts skaidrojums angliski: pareizā atbilde, salīdzinājums pa vārdiem (trūkstošie un liekie vārdi) un padoms. Jautājums tiek uzdots vēlreiz.
+5. Ja runas atpazīšana kļūdījās, poga **“Mana atbilde bija pareiza”** ieskaita atbildi.
+
+Runas atpazīšana izmanto iPhone (Siri) diktēšanu: jābūt ieslēgtai **Iestatījumi → Vispārīgi → Tastatūra → Iespējot diktēšanu** un interneta savienojumam. Ja mikrofons nav pieejams (piemēram, dažās iOS versijās sākuma ekrāna lietotnē), atbildi var ierakstīt vai diktēt ar tastatūras 🎤 pogu.
+
+Salīdzināšanas testi: `node tools/test_match.js`.
 
 ### Statistika
 

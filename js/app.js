@@ -64,6 +64,7 @@
     words: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h13v15H6.5A2.5 2.5 0 0 0 4 20.5 2.5 2.5 0 0 0 6.5 23H19v-5"/><path d="M8 7h7M8 11h5"/></svg>',
     dictation: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>',
     tasks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+    mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
     stats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
     chev: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>',
     speak: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>'
@@ -151,6 +152,11 @@
         <button class="tile" data-go="#/vocab">
           <span class="ico">${ICONS.words}</span>
           <span><strong>Vārdiņi</strong><span class="sub">Vocabulary · ${WORDS.length} vārdi · apgūti ${overall()}%</span></span>
+          <span class="chev">${ICONS.chev}</span>
+        </button>
+        <button class="tile" data-go="#/speak">
+          <span class="ico">${ICONS.mic}</span>
+          <span><strong>Runāšana</strong><span class="sub">Speaking · atbildi uz jautājumu balsī · ${overall("sp")}%</span></span>
           <span class="chev">${ICONS.chev}</span>
         </button>
         <button class="tile" data-go="#/stats">
@@ -524,21 +530,291 @@
       <button class="btn ${hasNext ? "secondary" : ""}" data-go="#/vocab">Uz vārdu sarakstu</button>`;
   }
 
+  /* ---------- speaking (question -> spoken answer) ---------- */
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let sp = null;          // speaking session
+  let recog = null;       // active recognizer
+  let spSearch = "";
+
+  function spMistakes() {
+    const out = [];
+    WORDS.forEach((g, wi) => g.qa.forEach((_, qi) => { const s = stats[itemKey(wi, qi, "sp")]; if (s && s.last === false) out.push({ wi, qi }); }));
+    return out;
+  }
+
+  function viewSpeakHome() {
+    setHeader("Runāšana", true);
+    const mistakes = spMistakes().length;
+    const pct = overall("sp");
+    app.innerHTML = `
+      <p class="lead">Izlasi jautājumu, nospied <b>🎤</b> un atbildi angliski ar pilnu teikumu – tā kā grāmatā.</p>
+      ${SR ? "" : `<div class="notice">Šajā pārlūkā runas atpazīšana nav pieejama. Atbildi var ierakstīt vai izmantot iPhone tastatūras diktēšanas pogu 🎤. Labāk darbojas, ja lietotni atver <b>Safari</b> pārlūkā.</div>`}
+      <div class="card stats">
+        <div class="stat"><b>${pct}%</b><span>pareizi</span></div>
+        <div class="stat"><b>${WORDS.filter((_, wi) => wordProgress(wi, "sp").pct === 100).length}/${WORDS.length}</b><span>kartītes</span></div>
+        <div class="stat ${mistakes ? "bad" : ""}"><b>${mistakes}</b><span>kļūdas</span></div>
+        <span class="bar wide"><i style="width:${pct}%"></i></span>
+      </div>
+      <button class="btn" id="spMixed">Jaukti jautājumi (10)</button>
+      <button class="btn danger" id="spReview" ${mistakes ? "" : "disabled"}>Atkārtot kļūdas (${mistakes})</button>
+      <p class="section-label">Vai izvēlies vārdu</p>
+      <input class="search" id="spSearch" type="search" placeholder="Meklēt vārdu…" value="${esc(spSearch)}" autocomplete="off" autocapitalize="off">
+      <div class="word-list" id="spList"></div>`;
+    const render = () => {
+      const q = spSearch.trim().toLowerCase();
+      const rows = WORDS.map((g, wi) => ({ g, wi })).filter(({ g }) => !q || g.word.toLowerCase().includes(q));
+      document.getElementById("spList").innerHTML = rows.map(({ g, wi }) => {
+        const p = wordProgress(wi, "sp");
+        const status = p.wrong ? "bad" : p.pct === 100 ? "ok" : p.started ? "mid" : "";
+        return `<button class="word-row" data-spword="${wi}">
+            <span class="dot ${status}" aria-hidden="true"></span>
+            <span class="wr-main"><strong>${esc(g.word)}</strong><span class="bar"><i style="width:${p.pct}%"></i></span></span>
+            <span class="wr-pct">${p.wrong ? `<span class="err">${p.wrong} ✗</span>` : `${p.pct}%`}</span>
+            <span class="chev">${ICONS.chev}</span></button>`;
+      }).join("") || `<p class="empty">Nekas netika atrasts.</p>`;
+    };
+    render();
+    document.getElementById("spSearch").addEventListener("input", (e) => { spSearch = e.target.value; render(); });
+    document.getElementById("spList").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-spword]"); if (!b) return;
+      const wi = Number(b.dataset.spword);
+      startSpeak(shuffle(WORDS[wi].qa.map((_, qi) => ({ wi, qi }))), WORDS[wi].word);
+    });
+    document.getElementById("spMixed").addEventListener("click", () => {
+      const items = [];
+      WORDS.forEach((g, wi) => g.qa.forEach((_, qi) => {
+        const s = stats[itemKey(wi, qi, "sp")];
+        const learnedCard = !!activity.learned[g.word] || wordProgress(wi, "qa").started;
+        items.push({ wi, qi, prio: (s && s.last === false ? 3 : !s && learnedCard ? 2 : !s ? 1 : 0) + Math.random() });
+      }));
+      items.sort((a, b) => b.prio - a.prio);
+      startSpeak(shuffle(items.slice(0, 10)), "Jaukti jautājumi");
+    });
+    document.getElementById("spReview").addEventListener("click", () => startSpeak(shuffle(spMistakes()), "Kļūdu atkārtošana"));
+  }
+
+  function startSpeak(items, title) {
+    if (!items.length) return;
+    sp = { queue: items.map((x) => ({ wi: x.wi, qi: x.qi })), i: 0, firstTry: 0, uniq: items.length, wrong: [], retried: new Set(), title };
+    if (location.hash === "#/speakq") viewSpeakQ(); else location.hash = "#/speakq";
+  }
+
+  function stopRecog() { if (recog) { try { recog.abort(); } catch (e) { /* ignore */ } recog = null; } }
+
+  function viewSpeakQ() {
+    stopRecog();
+    if (!sp) { location.replace("#/speak"); return; }
+    if (sp.i >= sp.queue.length) { viewSpeakResults(); return; }
+    setHeader(sp.title, true);
+    const item = sp.queue[sp.i];
+    const g = WORDS[item.wi], pair = g.qa[item.qi];
+    const pct = Math.round((sp.i / sp.queue.length) * 100);
+    app.innerHTML = `
+      <div class="progress"><span>Atlikuši: ${sp.queue.length - sp.i}</span><span class="bar"><i style="width:${pct}%"></i></span><span>✓ ${sp.firstTry}/${sp.uniq}</span></div>
+      ${item.retry ? `<p class="retry-tag">Atkārtojums – mēģini vēlreiz</p>` : ""}
+      <div class="card">
+        <p class="qtype">Answer the question</p><p class="tag-word">${esc(g.word)}</p>
+        <p class="prompt">${esc(pair.q)}${speakBtn(pair.q)}</p>
+      </div>
+      <div class="mic-area" id="micArea">
+        ${SR ? `<button class="mic" id="mic" aria-label="Runāt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+        <p class="mic-hint" id="micHint">Nospied un runā</p>` : ""}
+        <p class="heard" id="heard"></p>
+        <form class="typed" id="typed" ${SR ? "hidden" : ""}>
+          <input id="typedIn" type="text" placeholder="Ieraksti vai diktē atbildi…" autocomplete="off" autocapitalize="sentences" enterkeyhint="done">
+          <button class="btn" type="submit">Pārbaudīt</button>
+        </form>
+        ${SR ? `<button class="linkbtn" id="toType">Ierakstīt atbildi</button>` : ""}
+        <button class="linkbtn" id="showAns">Parādīt atbildi</button>
+      </div>
+      <div id="fb"></div>`;
+
+    document.getElementById("typed").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const v = document.getElementById("typedIn").value.trim();
+      if (v) evaluateSpoken([v]);
+    });
+    const toType = document.getElementById("toType");
+    if (toType) toType.addEventListener("click", () => { document.getElementById("typed").hidden = false; toType.hidden = true; document.getElementById("typedIn").focus(); });
+    document.getElementById("showAns").addEventListener("click", (e) => {
+      e.target.outerHTML = `<p class="peek">${pair.a.map(esc).join("<br><span class='muted'>or:</span> ")}</p>`;
+      item.peeked = true;
+    });
+    const mic = document.getElementById("mic");
+    if (mic) mic.addEventListener("click", () => (recog ? recog.stop() : listen()));
+  }
+
+  function listen() {
+    const mic = document.getElementById("mic"), hint = document.getElementById("micHint"), heard = document.getElementById("heard");
+    let finalAlts = null, gotAny = false;
+    try {
+      recog = new SR();
+    } catch (e) { hint.textContent = "Runas atpazīšana nav pieejama – ieraksti atbildi."; showTyped(); return; }
+    recog.lang = "en-GB";
+    recog.interimResults = true;
+    recog.maxAlternatives = 5;
+    recog.continuous = false;
+    recog.onstart = () => { mic.classList.add("on"); hint.textContent = "Klausos… nospied vēlreiz, kad pabeidz"; heard.textContent = ""; };
+    recog.onresult = (e) => {
+      gotAny = true;
+      let text = "";
+      for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
+      heard.textContent = "“" + text.trim() + "”";
+      const last = e.results[e.results.length - 1];
+      if (last.isFinal) {
+        // Build alternatives: full text with each alternative of the last segment.
+        const head = Array.from(e.results).slice(0, -1).map((r) => r[0].transcript).join(" ");
+        finalAlts = Array.from(last).map((alt) => (head + " " + alt.transcript).trim());
+      }
+    };
+    recog.onerror = (e) => {
+      const msg = { "not-allowed": "Nav atļauts izmantot mikrofonu. Atļauj to iestatījumos vai ieraksti atbildi.",
+        "service-not-allowed": "Runas atpazīšana nav pieejama (iPhone: ieslēdz Iestatījumi → Vispārīgi → Tastatūra → Iespējot diktēšanu). Vari ierakstīt atbildi.",
+        "no-speech": "Neko nedzirdēju – mēģini vēlreiz.", "audio-capture": "Mikrofons nav pieejams.", "network": "Runas atpazīšanai vajag interneta savienojumu." }[e.error];
+      hint.textContent = msg || "Kļūda: " + e.error;
+      if (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "audio-capture") showTyped();
+    };
+    recog.onend = () => {
+      mic.classList.remove("on");
+      recog = null;
+      const text = heard.textContent.replace(/^“|”$/g, "").trim();
+      if (finalAlts && finalAlts.length) evaluateSpoken(finalAlts);
+      else if (gotAny && text) evaluateSpoken([text]);
+      else if (hint.textContent.startsWith("Klausos")) hint.textContent = "Nospied un runā";
+    };
+    try { recog.start(); } catch (e) { hint.textContent = "Neizdevās ieslēgt mikrofonu – ieraksti atbildi."; showTyped(); }
+  }
+  function showTyped() {
+    const f = document.getElementById("typed"), t = document.getElementById("toType");
+    if (f) f.hidden = false;
+    if (t) t.hidden = true;
+  }
+
+  function renderDiff(ops) {
+    return ops.map((o) => {
+      if (o.op === "ok") return `<span class="w">${esc(o.exp)}</span>`;
+      if (o.op === "near") return `<span class="w near" title="you said: ${esc(o.got)}">${esc(o.exp)}</span>`;
+      if (o.op === "wild") return o.got.length ? `<span class="w own">${esc(o.got.join(" "))}</span>` : `<span class="w own">…</span>`;
+      if (o.op === "miss") return `<span class="w miss">${esc(o.exp)}</span>`;
+      if (o.op === "sub") return `<span class="w got">${esc(o.got)}</span><span class="w miss">${esc(o.exp)}</span>`;
+      if (o.op === "extra") return `<span class="w got">${esc(o.got)}</span>`;
+      return "";
+    }).join(" ");
+  }
+
+  function evaluateSpoken(alts) {
+    const item = sp.queue[sp.i];
+    if (item.done) return;
+    const g = WORDS[item.wi], pair = g.qa[item.qi];
+    const r = window.AnswerMatch.check(pair.a, alts);
+    finishSpoken(item, r.ok, r, alts[0]);
+  }
+
+  function finishSpoken(item, correct, r, said, overridden) {
+    item.done = true;
+    const g = WORDS[item.wi], pair = g.qa[item.qi];
+    const key = itemKey(item.wi, item.qi, "sp");
+    const s = stats[key] || { c: 0, w: 0 };
+    if (overridden) { s.w = Math.max(0, s.w - 1); }
+    if (correct) s.c++; else s.w++;
+    s.last = correct;
+    stats[key] = s; save(STORE_KEY, stats);
+    const rec = dayRec();
+    if (!overridden) rec.answers++;
+    if (correct) rec.correct++;
+    saveActivity();
+
+    if (!overridden) {
+      if (!item.retry && !sp.retried.has(key) && correct && !item.peeked) sp.firstTry++;
+      if (!correct) {
+        if (!sp.retried.has(key)) sp.wrong.push(item);
+        sp.retried.add(key);
+        sp.queue.splice(Math.min(sp.queue.length, sp.i + 3), 0, { wi: item.wi, qi: item.qi, retry: true });
+      }
+    } else {
+      // learner says their own answer was right: undo the retry and the mistake
+      const idx = sp.queue.findIndex((x, i) => i > sp.i && x.retry && x.wi === item.wi && x.qi === item.qi);
+      if (idx > 0) sp.queue.splice(idx, 1);
+      sp.wrong = sp.wrong.filter((x) => !(x.wi === item.wi && x.qi === item.qi));
+      if (!item.retry && !item.peeked) sp.firstTry++;
+    }
+
+    document.getElementById("micArea").hidden = true;
+    const others = pair.a.slice(1);
+    let h;
+    if (correct) {
+      h = `<div class="feedback ok"><h3>${overridden ? "OK – counted as correct." : "Correct!"}</h3>
+        ${said ? `<p><span class="label">You said:</span> “${esc(said)}”</p>` : ""}
+        <p><span class="label">Book answer:</span> ${esc(pair.a[0])}</p>
+        ${others.length ? `<p><span class="label">Also correct:</span> ${others.map(esc).join(" / ")}</p>` : ""}</div>`;
+    } else {
+      const tips = [];
+      if (r.meaningFlip) tips.push("Your answer changes the meaning – check <b>yes / no</b> and <b>not</b> (e.g. <i>I don’t…</i>, <i>it isn’t…</i>).");
+      const close = r.score >= 0.5; // only compare word by word when the answer is roughly similar
+      const missing = [...new Set(r.ops.filter((o) => o.op === "miss" || o.op === "sub").map((o) => o.exp))];
+      if (close && missing.length) tips.push(`Missing or wrong words: <b>${missing.slice(0, 6).map(esc).join(", ")}</b>${missing.length > 6 ? "…" : ""}.`);
+      if (!close) tips.push("Your answer is very different from the book answer. Listen to it (🔊) and repeat it.");
+      tips.push("Answer with a <b>full sentence</b> and repeat the words of the question: <i>Do you…? → Yes, I… / No, I don’t…</i>; <i>Is it…? → Yes, it is… / No, it isn’t…</i>");
+      h = `<div class="feedback bad"><h3>Not quite.</h3>
+        <p><span class="label">You said:</span> “${esc(said)}”</p>
+        <p><span class="label">Correct answer:</span> <strong>${esc(pair.a[0])}</strong></p>
+        ${others.length ? `<p><span class="label">Also correct:</span> ${others.map(esc).join(" / ")}</p>` : ""}
+        ${close ? `<p class="label" style="margin-top:10px">Compare:</p>
+        <p class="diff">${renderDiff(r.ops)}</p>
+        <p class="legend"><span class="w miss">missing</span> <span class="w got">not needed / wrong</span></p>` : ""}
+        ${tips.map((t) => `<p>${t}</p>`).join("")}
+        <p class="label" style="margin-top:10px">Key words:</p>${keyWords(g)}
+        <p class="lv">Šis jautājums tiks uzdots vēlreiz.</p></div>
+        <button class="btn secondary" id="listenAns">🔊 Noklausīties pareizo atbildi</button>
+        <button class="btn secondary" id="override">Mana atbilde bija pareiza (atpazīšanas kļūda)</button>`;
+    }
+    const last = sp.i + 1 >= sp.queue.length;
+    const fb = document.getElementById("fb");
+    fb.innerHTML = h + `<button class="btn" id="spNext">${last ? "Rezultāti" : "Tālāk"}</button>`;
+    document.getElementById("spNext").addEventListener("click", () => { sp.i++; viewSpeakQ(); window.scrollTo(0, 0); });
+    const la = document.getElementById("listenAns");
+    if (la) la.addEventListener("click", () => speak(pair.a[0]));
+    const ov = document.getElementById("override");
+    if (ov) ov.addEventListener("click", () => { finishSpoken(item, true, r, said, true); });
+    speak(pair.a[0]);
+    if (!correct) fb.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function viewSpeakResults() {
+    setHeader("Rezultāti", true);
+    const pct = Math.round((sp.firstTry / sp.uniq) * 100);
+    const list = sp.wrong.map((x) => { const g = WORDS[x.wi], p = g.qa[x.qi];
+      return `<div class="mistake"><strong>${esc(g.word)}</strong><span style="display:block">Q: ${esc(p.q)}</span><span style="display:block">A: ${esc(p.a[0])}</span></div>`; }).join("");
+    app.innerHTML = `
+      <div class="card score"><p class="big">${sp.firstTry} / ${sp.uniq}</p><p>pareizi ar pirmo reizi · ${pct}%</p></div>
+      ${list ? `<p class="section-label">Jāatkārto</p><div class="mistakes">${list}</div>` : ""}
+      <button class="btn" id="spAgain">Vēl 10 jautājumi</button>
+      <button class="btn secondary" data-go="#/speak">Uz sadaļu “Runāšana”</button>`;
+    document.getElementById("spAgain").addEventListener("click", () => { sp = null; location.hash = "#/speak"; setTimeout(() => { const b = document.getElementById("spMixed"); if (b) b.click(); }, 0); });
+  }
+
   /* ---------- routing & global events ---------- */
   function route() {
     const h = location.hash || "#/";
     let m;
+    if (!h.startsWith("#/speakq")) stopRecog();
     if (h.startsWith("#/vocab")) viewVocab();
     else if ((m = h.match(/^#\/word\/(\d+)/))) viewWord(Number(m[1]));
     else if (h.startsWith("#/quiz")) viewQuiz();
     else if (h.startsWith("#/stats")) viewStats();
+    else if (h.startsWith("#/speakq")) viewSpeakQ();
+    else if (h.startsWith("#/speak")) viewSpeakHome();
     else viewHome();
     window.scrollTo(0, 0);
   }
   window.addEventListener("hashchange", route);
   backBtn.addEventListener("click", () => {
     const h = location.hash;
-    if (h.startsWith("#/quiz")) {
+    if (!h.startsWith("#/speakq")) stopRecog();
+    if (h.startsWith("#/speakq")) {
+      const finished = !sp || sp.i >= sp.queue.length;
+      if (finished || confirm("Pārtraukt?")) { stopRecog(); sp = null; location.hash = "#/speak"; }
+    } else if (h.startsWith("#/quiz")) {
       const finished = !session || session.i >= session.queue.length;
       if (finished || confirm("Pārtraukt?")) { const back = session && session.back; session = null; location.hash = back || "#/vocab"; }
     } else if (h.startsWith("#/word")) location.hash = "#/vocab";
@@ -546,7 +822,7 @@
   });
   app.addEventListener("click", (e) => {
     const sp = e.target.closest("[data-speak]"); if (sp) { e.stopPropagation(); speak(sp.dataset.speak); return; }
-    const go = e.target.closest("[data-go]"); if (go) { if (location.hash.startsWith("#/quiz")) session = null; location.hash = go.dataset.go; }
+    const go = e.target.closest("[data-go]"); if (go) { if (location.hash.startsWith("#/quiz")) session = null; if (location.hash.startsWith("#/speakq")) { stopRecog(); sp = null; } location.hash = go.dataset.go; }
   });
   document.addEventListener("keydown", (e) => {
     if (!location.hash.startsWith("#/quiz") || !session) return;

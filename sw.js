@@ -1,7 +1,7 @@
 /* Offline atbalsts. Mainot failus, palielini VERSION, lai iPhone ielādētu jauno versiju. */
-const VERSION = "stage3-v4";
+const VERSION = "stage3-v5";
 const FILES = [
-  "./", "index.html", "css/style.css", "js/app.js", "data/vocabulary.js",
+  "./", "index.html", "css/style.css", "js/match.js", "js/app.js", "data/vocabulary.js",
   "manifest.webmanifest", "icons/icon.svg", "icons/apple-touch-icon.png",
   "icons/icon-192.png", "icons/icon-512.png"
 ];
